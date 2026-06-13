@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>连连AI</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #fff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #16a34a;
+      --orange: #f97316;
+      --shadow: 0 18px 55px rgba(15, 23, 42, .08);
+      --radius: 16px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 0%, rgba(37, 99, 235, .09), transparent 30%),
+        var(--bg);
+      font-family: var(--sans);
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    [hidden] { display: none !important; }
+
+    .page {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 44px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(135deg, #0f172a, var(--blue));
+      font-weight: 850;
+      box-shadow: 0 12px 26px rgba(37, 99, 235, .2);
+    }
+
+    h1 {
+      margin-bottom: 3px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .muted {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #475569;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .source-pill.ai {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: var(--blue);
+    }
+
+    .source-pill.fallback {
+      border-color: #fed7aa;
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 11px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .step.active {
+      border-color: #bfdbfe;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .view {
+      display: none;
+      animation: rise .22s ease both;
+    }
+
+    .view.active { display: block; }
+    .hidden { display: none !important; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 22px 24px 0;
+    }
+
+    .card-head h2 {
+      margin-bottom: 8px;
+      font-size: clamp(28px, 5vw, 48px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .card-head p {
+      max-width: 700px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .card-body {
+      padding: 20px 24px 24px;
+    }
+
+    .panel-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .form {
+      display: grid;
+      gap: 12px;
+      max-width: 720px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      padding: 11px 12px;
+      line-height: 1.55;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #bfdbfe;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .08);
+    }
+
+    textarea:focus::placeholder {
+      color: transparent;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .chip.selected {
+      border-color: #bfdbfe;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .primary, .secondary {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 11px 15px;
+      font-weight: 800;
+      transition: .15s ease;
+    }
+
+    .primary {
+      color: #fff;
+      background: var(--blue);
+      border-color: var(--blue);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, .16);
+    }
+
+    .secondary {
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .primary:hover, .secondary:hover { transform: translateY(-1px); }
+    .primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .agent-result {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 74px 1fr;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid #bfdbfe;
+      background: #fbfdff;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .agent-orb, .avatar {
+      border: 1px solid #dbeafe;
+      color: var(--blue);
+      background: var(--blue-soft);
+      display: grid;
+      place-items: center;
+      font-weight: 850;
+    }
+
+    .agent-orb {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      font-size: 22px;
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+    }
+
+    .chat-input {
+      max-width: 820px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .candidate-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .loading-panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 26px;
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .loader {
+      width: 34px;
+      height: 34px;
+      border: 3px solid #dbeafe;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    .candidate {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .candidate:hover {
+      border-color: #bfdbfe;
+      background: #fbfdff;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .08);
+    }
+
+    .candidate h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    .candidate p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .score {
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .score-wrap {
+      display: grid;
+      justify-items: end;
+      gap: 7px;
+    }
+
+    .outcome-chip {
+      border: 1px solid #fed7aa;
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #c2410c;
+      padding: 5px 8px;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .outcome-chip.agreement {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+      color: var(--green);
+    }
+
+    .breakdown {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .breakdown span {
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      padding: 4px 7px;
+      font-size: 11px;
+    }
+
+    .conversation-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr);
+      gap: 14px;
+    }
+
+    .message-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .message, .brief {
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+    }
+
+    .message {
+      padding: 12px;
+    }
+
+    .speaker {
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .message p {
+      margin: 0;
+      color: #334155;
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .brief {
+      overflow: hidden;
+    }
+
+    .brief-row {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .brief-row:last-child { border-bottom: 0; }
+    .brief-row b { color: var(--muted); }
+    .brief-row span { color: #334155; line-height: 1.55; }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: 360px;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      background: rgba(255,255,255,.96);
+      box-shadow: var(--shadow);
+      padding: 13px 14px;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: .2s ease;
+      font-size: 13px;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 820px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .row, .conversation-grid { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: min(100% - 20px, 1080px); padding-top: 18px; }
+      .card-head, .card-body { padding-left: 18px; padding-right: 18px; }
+      .candidate { grid-template-columns: 44px 1fr; }
+      .score { grid-column: 2; }
+      .brief-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="logo">连</div>
+        <div>
+          <h1>连连AI</h1>
+          <p class="muted">让你的 Agent 主动寻找、沟通并筛选合适的人。</p>
+        </div>
+      </div>
+    </header>
+
+    <nav class="steps" aria-label="flow steps">
+      <button class="step" data-route="#/create">创建 Agent</button>
+      <button class="step" data-route="#/chat">输入需求</button>
+      <button class="step" data-route="#/matches">匹配结果</button>
+      <button class="step" data-route="#/conversation">自动沟通</button>
+    </nav>
+
+    <section class="view" id="createView">
+      <div class="card">
+        <div class="card-head">
+          <h2>创建你的个人 Agent。</h2>
+          <p>它会记录你的身份、能力和偏好，并在你提出需求后替你寻找合适的人。</p>
+        </div>
+        <div class="card-body">
+          <div class="form">
+            <div class="row">
+              <div>
+                <label for="nameInput">用户名</label>
+                <input id="nameInput" value="杨涵沁">
+              </div>
+              <div>
+                <label for="roleInput">身份</label>
+                <input id="roleInput" value="AI 产品 / 黑客松参赛者">
+              </div>
+            </div>
+            <div>
+              <label for="skillsInput">你的能力</label>
+              <input id="skillsInput" value="产品叙事、Agent 体验设计、快速原型">
+            </div>
+            <div>
+              <label>Agent 可使用的标签</label>
+              <div class="chips">
+                <button class="chip selected">Agent 产品</button>
+                <button class="chip selected">教育科技</button>
+                <button class="chip selected">快速原型</button>
+                <button class="chip">校园场景</button>
+                <button class="chip">增长实验</button>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" id="goChatBtn">告诉 Agent 我的需求</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="chatView">
+      <div class="card">
+        <div class="card-head">
+          <h2>输入你的需求</h2>
+          <p>Agent会根据需求自动匹配合适的人并进行沟通</p>
+        </div>
+        <div class="card-body">
+          <div class="chat-input">
+            <label for="needInput">你的需求</label>
+            <textarea id="needInput" placeholder="帮我找一个黑客松队友，希望具有一定的开发能力" onfocus="this.dataset.hint=this.placeholder;this.placeholder=''" onblur="if(!this.value.trim())this.placeholder=this.dataset.hint"></textarea>
+            <div class="actions">
+              <button class="primary" id="matchBtn">开始匹配并自动沟通</button>
+              <button class="secondary" id="backAgentBtn">返回创建 Agent</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="matchesView">
+      <div class="card">
+        <div class="card-head">
+          <h2>匹配到这些 Agent。</h2>
+          <p>匹配完成后，多个候选 Agent 已经自动沟通过。点击候选可查看结论、沟通记录和合作大纲。</p>
+        </div>
+        <div class="card-body">
+          <div class="candidate-list" id="candidateList"></div>
+          <div class="actions">
+            <button class="secondary" id="backChatBtn">修改需求</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="conversationView">
+      <div class="card">
+        <div class="card-head">
+          <h2 id="conversationHeading">Agent 自动沟通情况</h2>
+          <p id="conversationSub">选择候选后显示 Qin-01 与对方 Agent 的沟通记录。</p>
+        </div>
+        <div class="card-body">
+          <div class="conversation-grid">
+            <div>
+              <h3 class="panel-title">沟通记录</h3>
+              <div class="source-pill" id="aiSource">等待生成</div>
+              <div class="message-list" id="messageList"></div>
+            </div>
+            <div>
+              <h3 class="panel-title">引荐 Brief</h3>
+              <div class="brief" id="brief"></div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="backMatchesBtn">返回匹配结果</button>
+            <button class="primary" id="restartBtn">重新开始</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const routes = {
+      "#/create": "createView",
+      "#/chat": "chatView",
+      "#/matches": "matchesView",
+      "#/conversation": "conversationView"
+    };
+
+    let state = {
+      profile: null,
+      agent: null,
+      demand: "",
+      candidates: [],
+      negotiations: {},
+      selected: null
+    };
+
+    const $ = selector => document.querySelector(selector);
+    const DEFAULT_DEMAND = "帮我找一个黑客松队友，希望具有一定的开发能力";
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    function toast(text) {
+      const el = $("#toast");
+      el.textContent = text;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2400);
+    }
+
+    function navigate(route) {
+      location.hash = route;
+    }
+
+    function currentRoute() {
+      const hash = location.hash || "#/create";
+      if (hash.startsWith("#/conversation/")) return "#/conversation";
+      return routes[hash] ? hash : "#/create";
+    }
+
+    function renderRoute() {
+      const route = currentRoute();
+      document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
+      document.getElementById(routes[route]).classList.add("active");
+      document.querySelectorAll(".step").forEach(step => {
+        step.classList.toggle("active", step.dataset.route === route);
+      });
+    }
+
+    async function postJson(path, payload) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error || "API 请求失败");
+      return data;
+    }
+
+    function readProfile() {
+      return {
+        name: $("#nameInput").value.trim() || "用户",
+        role: $("#roleInput").value.trim(),
+        skills: $("#skillsInput").value.trim(),
+        tags: [...document.querySelectorAll(".chip.selected")].map(chip => chip.textContent.trim())
+      };
+    }
+
+    async function createAgent() {
+      const button = $("#goChatBtn");
+      button.disabled = true;
+      try {
+        state.profile = readProfile();
+        const data = await postJson("/api/profile", { profile: state.profile });
+        state.agent = data.agent;
+        toast("已创建 Qin-01。");
+        navigate("#/chat");
+      } catch (error) {
+        toast(`创建 Agent 失败：${error.message}`);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function runMatch() {
+      const button = $("#matchBtn");
+      button.disabled = true;
+      try {
+        if (!state.profile) {
+          state.profile = readProfile();
+          await postJson("/api/profile", { profile: state.profile });
+        }
+        state.demand = $("#needInput").value.trim() || DEFAULT_DEMAND;
+        renderLoading();
+        navigate("#/matches");
+        const match = await postJson("/api/match", {
+          profile: state.profile,
+          demand: state.demand
+        });
+        state.candidates = match.candidates;
+        state.negotiations = match.negotiations || {};
+        renderCandidates(match.candidates);
+        toast("匹配和多 Agent 自动沟通已完成。");
+      } catch (error) {
+        toast(`匹配失败：${error.message}`);
+        navigate("#/chat");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function renderLoading() {
+      $("#candidateList").innerHTML = `
+        <div class="loading-panel">
+          <div class="loader"></div>
+          <b>Agent 正在匹配并自动沟通</b>
+          <span>正在筛选候选、确认合作意向并生成结果...</span>
+        </div>
+      `;
+    }
+
+    function renderCandidates(candidates) {
+      $("#candidateList").innerHTML = candidates.map(candidate => `
+        <button class="candidate" data-id="${escapeHtml(candidate.id)}">
+          <div class="avatar">${escapeHtml(candidate.avatar)}</div>
+          <div>
+            <h3>${escapeHtml(candidate.agent)} · ${escapeHtml(candidate.name)}</h3>
+            <p>${escapeHtml(candidate.reasons.join("；"))}。${escapeHtml(candidate.availability)}</p>
+            <div class="breakdown">
+              <span>技能 ${candidate.breakdown.skill}</span>
+              <span>兴趣 ${candidate.breakdown.interest}</span>
+              <span>时间 ${candidate.breakdown.availability}</span>
+              <span>协作 ${candidate.breakdown.collaboration}</span>
+            </div>
+          </div>
+          <div class="score-wrap">
+            <div class="score">${candidate.score}%</div>
+            ${renderOutcomeChip(candidate.id)}
+          </div>
+        </button>
+      `).join("");
+      document.querySelectorAll(".candidate").forEach(card => {
+        card.addEventListener("click", () => openConversation(card.dataset.id));
+      });
+    }
+
+    function renderOutcomeChip(candidateId) {
+      const negotiation = state.negotiations[candidateId];
+      if (!negotiation) return `<span class="outcome-chip">不合适</span>`;
+      const isAgreement = negotiation.outcome === "agreement";
+      return `<span class="outcome-chip ${isAgreement ? "agreement" : ""}">${escapeHtml(negotiation.outcomeText || (isAgreement ? "已达成" : "不合适"))}</span>`;
+    }
+
+    async function openConversation(candidateId) {
+      const candidate = state.candidates.find(item => item.id === candidateId);
+      if (!candidate) {
+        toast("请先运行匹配流程。");
+        navigate("#/matches");
+        return;
+      }
+      state.selected = candidate;
+      const cached = state.negotiations[candidate.id];
+      $("#conversationHeading").textContent = `Qin-01 ↔ ${candidate.agent}`;
+      $("#conversationSub").textContent = cached?.outcome === "agreement"
+        ? `${candidate.name} 的 Agent 已确认合作意向，等待你确认合作大纲。`
+        : `${candidate.name} 的 Agent 已完成沟通，结论是不合适。`;
+      $("#brief").innerHTML = "";
+      navigate(`#/conversation/${candidate.id}`);
+
+      try {
+        const negotiation = cached || await postJson("/api/negotiate", {
+            profile: state.profile,
+            demand: state.demand,
+            candidates: [candidate]
+          });
+        setAiSource(negotiation.source, negotiation.source === "ai"
+          ? "AI 自动沟通已完成"
+          : negotiation.source === "rule"
+            ? "规则判断 · 不合适"
+            : `模板兜底 · ${negotiation.error || "AI 未返回有效结果"}`);
+        renderMessages(negotiation.messages);
+        renderBrief(negotiation.intro);
+        toast(negotiation.outcome === "agreement" ? "已生成合作大纲，等待你确认。" : "Agent 沟通结论：不合适。");
+      } catch (error) {
+        toast(`沟通失败：${error.message}`);
+      }
+    }
+
+    function setAiSource(source, text) {
+      const pill = $("#aiSource");
+      pill.className = `source-pill ${source === "ai" ? "ai" : source === "fallback" ? "fallback" : ""}`;
+      pill.textContent = text;
+    }
+
+    function renderMessages(messages) {
+      $("#messageList").innerHTML = messages.map(message => `
+        <article class="message">
+          <div class="speaker">${escapeHtml(message.speaker)}</div>
+          <p>${escapeHtml(message.text)}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderBrief(intro) {
+      $("#brief").innerHTML = intro.brief.map(([label, text]) => `
+        <div class="brief-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(text)}</span></div>
+      `).join("") + (intro.status === "ready_for_user_approval"
+        ? `<div class="brief-row"><b>用户确认</b><span><button class="primary" id="confirmOutlineBtn">确认这个合作大纲</button></span></div>`
+        : `<div class="brief-row"><b>前端提示</b><span>不合适</span></div>`);
+      const confirmBtn = $("#confirmOutlineBtn");
+      if (confirmBtn) confirmBtn.addEventListener("click", () => toast("已确认合作大纲，可以进入真人引荐。"));
+    }
+
+    function restart() {
+      state = { profile: null, agent: null, demand: "", candidates: [], negotiations: {}, selected: null };
+      $("#candidateList").innerHTML = "";
+      $("#messageList").innerHTML = "";
+      $("#brief").innerHTML = "";
+      $("#needInput").value = "";
+      navigate("#/create");
+    }
+
+    document.querySelectorAll(".step").forEach(step => {
+      step.addEventListener("click", () => {
+        const target = step.dataset.route;
+        if (target === "#/chat" && !state.agent) {
+          toast("请先创建 Agent。");
+          return;
+        }
+        if (target === "#/matches" && !state.candidates.length) {
+          toast("请先输入需求并运行匹配。");
+          return;
+        }
+        if (target === "#/conversation" && !state.selected) {
+          toast("请先在匹配结果里选择一个候选。");
+          return;
+        }
+        navigate(target);
+      });
+    });
+
+    document.querySelectorAll(".chip").forEach(chip => {
+      chip.addEventListener("click", () => chip.classList.toggle("selected"));
+    });
+
+    const needInput = $("#needInput");
+    const needHint = needInput.getAttribute("placeholder");
+    needInput.addEventListener("focus", () => {
+      needInput.setAttribute("placeholder", "");
+    });
+    needInput.addEventListener("blur", () => {
+      if (!needInput.value.trim()) needInput.setAttribute("placeholder", needHint);
+    });
+
+    $("#goChatBtn").addEventListener("click", createAgent);
+    $("#backAgentBtn").addEventListener("click", () => navigate("#/create"));
+    $("#matchBtn").addEventListener("click", runMatch);
+    $("#backChatBtn").addEventListener("click", () => navigate("#/chat"));
+    $("#backMatchesBtn").addEventListener("click", () => navigate("#/matches"));
+    $("#restartBtn").addEventListener("click", restart);
+
+    window.addEventListener("hashchange", renderRoute);
+    if (!location.hash || location.hash === "#/login" || location.hash === "#/agent") location.hash = "#/create";
+    renderRoute();
+  </script>
+</body>
+</html>

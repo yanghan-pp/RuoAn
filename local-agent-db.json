@@ -1,0 +1,56 @@
+{
+  "agents": [
+    {
+      "recordId": "agent-1781369176953",
+      "createdAt": 1781369176,
+      "profile": {
+        "name": "杨涵沁",
+        "role": "AI 产品 / 黑客松参赛者",
+        "skills": "产品叙事、Agent 体验设计、快速原型",
+        "tags": [
+          "Agent 产品",
+          "教育科技",
+          "快速原型"
+        ]
+      },
+      "agent": {
+        "id": "qin-01",
+        "name": "Qin-01",
+        "owner": "杨涵沁",
+        "memoryCount": 15,
+        "permissions": [
+          "pre_negotiate",
+          "rank_candidates",
+          "draft_intro"
+        ],
+        "privacy": "contact_requires_user_approval"
+      }
+    },
+    {
+      "recordId": "agent-1781369400058",
+      "createdAt": 1781369400,
+      "profile": {
+        "name": "杨涵沁",
+        "role": "AI 产品 / 黑客松参赛者",
+        "skills": "产品叙事、Agent 体验设计、快速原型",
+        "tags": [
+          "Agent 产品",
+          "教育科技",
+          "快速原型"
+        ]
+      },
+      "agent": {
+        "id": "qin-01",
+        "name": "Qin-01",
+        "owner": "杨涵沁",
+        "memoryCount": 15,
+        "permissions": [
+          "pre_negotiate",
+          "rank_candidates",
+          "draft_intro"
+        ],
+        "privacy": "contact_requires_user_approval"
+      }
+    }
+  ]
+}
