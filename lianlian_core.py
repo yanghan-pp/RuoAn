@@ -883,7 +883,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", "4190"))
+    raw_port = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("PORT") or "4190"
+    try:
+        port = int(raw_port)
+    except ValueError:
+        port = 4190
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     print(f"连连AI running at http://0.0.0.0:{port}/agent-network-demo.html")
     server.serve_forever()
