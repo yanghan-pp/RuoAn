@@ -32,9 +32,13 @@ def load_env_file(path):
 load_env_file(PROJECT_ROOT / ".env")
 load_env_file(ROOT / ".env")
 
-HTML_PATH = ROOT / "agent-network-demo.html"
-AGENT_DB_PATH = ROOT / "local-agent-db.json"
-EVENT_DB_PATH = ROOT / "local-runtime-db.json"
+HTML_PATH = PROJECT_ROOT / "public" / "agent-network-demo.html"
+if not HTML_PATH.exists():
+    HTML_PATH = PROJECT_ROOT / "outputs" / "agent-network-demo.html"
+if not HTML_PATH.exists():
+    HTML_PATH = ROOT / "agent-network-demo.html"
+AGENT_DB_PATH = PROJECT_ROOT / "local-agent-db.json"
+EVENT_DB_PATH = PROJECT_ROOT / "local-runtime-db.json"
 ARK_API_URL = "https://ark.cn-beijing.volces.com/api/v3/responses"
 ARK_MODEL = "deepseek-v4-pro-260425"
 ARK_API_KEY = ""

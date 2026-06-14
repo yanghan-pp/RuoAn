@@ -6,4 +6,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 EXPOSE 4190
 
-CMD ["python", "outputs/agent-network-server.py"]
+CMD ["python", "api/lianlian_core.py"]
