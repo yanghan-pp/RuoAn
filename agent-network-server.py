@@ -9,11 +9,32 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 
 ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parent
+
+
+def load_env_file(path):
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+load_env_file(PROJECT_ROOT / ".env")
+load_env_file(ROOT / ".env")
+
 HTML_PATH = ROOT / "agent-network-demo.html"
 AGENT_DB_PATH = ROOT / "local-agent-db.json"
+EVENT_DB_PATH = ROOT / "local-runtime-db.json"
 ARK_API_URL = "https://ark.cn-beijing.volces.com/api/v3/responses"
 ARK_MODEL = "deepseek-v4-pro-260425"
 ARK_API_KEY = ""
@@ -23,21 +44,217 @@ def ark_api_key():
     return os.environ.get("ARK_API_KEY") or ARK_API_KEY
 
 
-def save_created_agent(profile, agent):
-    if AGENT_DB_PATH.exists():
+def now_ts():
+    return int(time.time())
+
+
+def new_record_id(prefix):
+    return f"{prefix}-{uuid.uuid4().hex}"
+
+
+def supabase_rest_url():
+    rest_url = os.environ.get("SUPABASE_REST_URL", "").strip()
+    if rest_url:
+        return rest_url.rstrip("/")
+    project_url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+    if project_url:
+        return f"{project_url}/rest/v1"
+    return ""
+
+
+def supabase_service_key():
+    return os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+
+
+def supabase_insert(table, payload):
+    rest_url = supabase_rest_url()
+    service_key = supabase_service_key()
+    if not rest_url or not service_key:
+        return None
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        f"{rest_url}/{table}",
+        data=body,
+        headers={
+            "apikey": service_key,
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        raw = response.read().decode("utf-8")
+    return json.loads(raw) if raw else None
+
+
+def supabase_select(table, query="select=*"):
+    rest_url = supabase_rest_url()
+    service_key = supabase_service_key()
+    if not rest_url or not service_key:
+        return None
+    request = urllib.request.Request(
+        f"{rest_url}/{table}?{query}",
+        headers={
+            "apikey": service_key,
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        raw = response.read().decode("utf-8")
+    return json.loads(raw) if raw else []
+
+
+def append_local_json(path, collection, row):
+    if path.exists():
         try:
-            data = json.loads(AGENT_DB_PATH.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            data = {"agents": []}
+            data = {collection: []}
     else:
-        data = {"agents": []}
-    data.setdefault("agents", []).append({
-        "recordId": f"agent-{int(time.time() * 1000)}",
-        "createdAt": int(time.time()),
+        data = {collection: []}
+    data.setdefault(collection, []).append(row)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def save_created_agent(profile, agent):
+    row = {
+        "record_id": new_record_id("agent"),
+        "owner_name": agent.get("owner") or profile.get("name") or "用户",
         "profile": profile,
         "agent": agent,
-    })
-    AGENT_DB_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        "created_at": now_ts(),
+    }
+    try:
+        supabase_insert("user_agents", row)
+    except Exception as exc:
+        sys.stderr.write(f"Supabase user_agents fallback: {exc}\n")
+    append_local_json(AGENT_DB_PATH, "agents", row)
+    return row["record_id"]
+
+
+def split_profile_skills(profile):
+    raw = profile.get("skills") or ""
+    parts = re.split(r"[,，、/|\s]+", raw)
+    return [part.strip() for part in parts if part.strip()]
+
+
+def normalize_user_agent_row(row):
+    profile = row.get("profile") or {}
+    agent = row.get("agent") or {}
+    owner = agent.get("owner") or row.get("owner_name") or profile.get("name") or "用户"
+    tags = profile.get("tags") or []
+    skills = split_profile_skills(profile)
+    merged_skills = list(dict.fromkeys([*skills, *tags]))
+    return {
+        "id": row.get("record_id") or new_record_id("user-agent"),
+        "agent": agent.get("name") or f"{owner}.ai",
+        "name": owner,
+        "role": profile.get("role") or "用户创建的 Agent",
+        "summary": f"{owner} 创建的个人 Agent。能力：{profile.get('skills') or '待补充'}。",
+        "skills": merged_skills or ["快速 Demo"],
+        "interests": tags or ["合作机会"],
+        "availability": "待双方 Agent 沟通确认",
+        "style": "用户创建的 Agent，适合根据需求进一步确认合作方式",
+        "collaboration": tags or ["异步沟通"],
+        "base": 42,
+        "avatar": owner[:1].upper(),
+        "source": "user_created",
+    }
+
+
+def load_created_agents():
+    rows = []
+    try:
+        rows = supabase_select("user_agents", "select=record_id,owner_name,profile,agent,created_at&order=created_at.desc&limit=50") or []
+    except Exception as exc:
+        sys.stderr.write(f"Supabase user_agents read fallback: {exc}\n")
+    if not rows and AGENT_DB_PATH.exists():
+        try:
+            rows = (json.loads(AGENT_DB_PATH.read_text(encoding="utf-8")).get("agents") or [])[-50:]
+        except json.JSONDecodeError:
+            rows = []
+    return [normalize_user_agent_row(row) for row in rows]
+
+
+def candidate_pool(profile):
+    current_name = (profile.get("name") or "").strip()
+    seen = {agent["id"] for agent in AGENTS}
+    candidates = [dict(agent, source="mock") for agent in AGENTS]
+    for agent in load_created_agents():
+        if agent["id"] in seen:
+            continue
+        if current_name and agent["name"] == current_name:
+            continue
+        seen.add(agent["id"])
+        candidates.append(agent)
+    return candidates
+
+
+def save_match_run(profile, demand, match):
+    match_record_id = new_record_id("match")
+    request_row = {
+        "record_id": match_record_id,
+        "user_name": profile.get("name") or "用户",
+        "profile": profile,
+        "demand": demand,
+        "intent": match.get("intent", {}),
+        "created_at": now_ts(),
+    }
+    result_rows = []
+    conversation_rows = []
+    brief_rows = []
+    negotiations = match.get("negotiations", {})
+    for candidate in match.get("candidates", []):
+        negotiation = negotiations.get(candidate["id"], {})
+        result_rows.append({
+            "record_id": new_record_id("result"),
+            "match_request_record_id": match_record_id,
+            "candidate_id": candidate["id"],
+            "candidate": candidate,
+            "score": candidate.get("score"),
+            "outcome": negotiation.get("outcome", "not_suitable"),
+            "reasons": candidate.get("reasons", []),
+            "created_at": now_ts(),
+        })
+        if negotiation:
+            conversation_rows.append({
+                "record_id": new_record_id("conversation"),
+                "match_request_record_id": match_record_id,
+                "candidate_id": candidate["id"],
+                "source": negotiation.get("source", "rule"),
+                "messages": negotiation.get("messages", []),
+                "created_at": now_ts(),
+            })
+            brief_rows.append({
+                "record_id": new_record_id("brief"),
+                "match_request_record_id": match_record_id,
+                "candidate_id": candidate["id"],
+                "outcome": negotiation.get("outcome", "not_suitable"),
+                "status": (negotiation.get("intro") or {}).get("status", ""),
+                "brief": negotiation.get("intro", {}),
+                "created_at": now_ts(),
+            })
+    local_row = {
+        "match_request": request_row,
+        "match_results": result_rows,
+        "agent_conversations": conversation_rows,
+        "collaboration_briefs": brief_rows,
+    }
+    try:
+        supabase_insert("match_requests", request_row)
+        if result_rows:
+            supabase_insert("match_results", result_rows)
+        if conversation_rows:
+            supabase_insert("agent_conversations", conversation_rows)
+        if brief_rows:
+            supabase_insert("collaboration_briefs", brief_rows)
+    except Exception as exc:
+        sys.stderr.write(f"Supabase match fallback: {exc}\n")
+    append_local_json(EVENT_DB_PATH, "runs", local_row)
+    return match_record_id
 
 AGENTS = [
     {
@@ -235,7 +452,8 @@ def make_intent(demand):
 def build_matches(profile, demand):
     intent = make_intent(demand)
     candidates = []
-    for agent in AGENTS:
+    pool = candidate_pool(profile)
+    for agent in pool:
         scored = score_agent(agent, intent, profile, demand)
         score = scored["score"]
         reasons = []
@@ -263,7 +481,7 @@ def build_matches(profile, demand):
     candidates.sort(key=lambda item: item["score"], reverse=True)
     ready = [c for c in candidates if c["decision"] == "auto_negotiate"]
     stats = {
-        "scanned": len(AGENTS) * 24 + 8,
+        "scanned": len(pool) * 24 + 8,
         "filtered": len([c for c in candidates if c["decision"] == "filtered"]),
         "contacted": len([c for c in candidates if c["decision"] in ("auto_negotiate", "backup")]),
         "ready": len(ready),
@@ -612,7 +830,7 @@ class Handler(BaseHTTPRequestHandler):
                 "model": os.environ.get("ARK_MODEL", ARK_MODEL),
             })
         elif self.path == "/api/agents":
-            self._json({"agents": AGENTS})
+            self._json({"agents": candidate_pool({})})
         else:
             self._json({"error": "not_found"}, 404)
 
@@ -638,7 +856,9 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/match":
                 profile = payload.get("profile", {})
                 demand = payload.get("demand", "")
-                self._json(build_network_match(profile, demand))
+                match = build_network_match(profile, demand)
+                save_match_run(profile, demand, match)
+                self._json(match)
             elif self.path == "/api/negotiate":
                 profile = payload.get("profile", {})
                 demand = payload.get("demand", "")

@@ -34,6 +34,8 @@ outputs/
   agent-network-demo.html      # 前端单页应用
   agent-network-server.py      # Python 后端服务
   local-agent-db.json          # 本地 Agent 创建记录
+  local-runtime-db.json        # 本地匹配和沟通记录 fallback
+supabase_schema.sql            # Supabase 建表 SQL
 ```
 
 ## 本地运行
@@ -65,6 +67,33 @@ ARK_MODEL = "deepseek-v4-pro-260425"
 ```
 
 如果 AI 调用失败，系统会自动使用后端规则和模板兜底，保证 demo 流程仍然可以完成。
+
+## Supabase 配置
+
+项目支持把运行数据写入 Supabase。先在 Supabase SQL Editor 中执行：
+
+```text
+supabase_schema.sql
+```
+
+然后用环境变量启动服务：
+
+```bash
+SUPABASE_REST_URL="https://your-project.supabase.co/rest/v1" \
+SUPABASE_SERVICE_ROLE_KEY="your_service_role_key" \
+ARK_API_KEY="your_api_key_here" \
+python3 outputs/agent-network-server.py 4190
+```
+
+写入 Supabase 的数据包括：
+
+- 用户创建的 Agent：`user_agents`
+- 用户需求：`match_requests`
+- 匹配结果：`match_results`
+- Agent 沟通记录：`agent_conversations`
+- 合作大纲：`collaboration_briefs`
+
+如果没有配置 Supabase，或者写入失败，系统会自动写入本地 JSON fallback。
 
 ## 后端接口
 
@@ -118,7 +147,13 @@ ARK_MODEL = "deepseek-v4-pro-260425"
 outputs/local-agent-db.json
 ```
 
-这个文件可以视为临时本地数据库。后续接入真实数据库时，可以把 `save_created_agent()` 替换为数据库写入逻辑。
+匹配、沟通和合作大纲会写入：
+
+```text
+outputs/local-runtime-db.json
+```
+
+这两个文件可以视为临时本地数据库。接入 Supabase 后，它们会作为 fallback 继续保留。
 
 ## 安全注意事项
 
@@ -128,7 +163,8 @@ outputs/local-agent-db.json
 
 - 删除或替换源码里的真实 Key。
 - 使用 `ARK_API_KEY` 环境变量管理密钥。
-- 将 `outputs/local-agent-db.json` 加入 `.gitignore`，避免提交本地用户数据。
+- 使用 `SUPABASE_SERVICE_ROLE_KEY` 环境变量管理 Supabase service role。
+- 将本地 JSON 数据文件加入 `.gitignore`，避免提交本地用户数据。
 
 ## 当前状态
 
@@ -137,6 +173,5 @@ outputs/local-agent-db.json
 - 前端：单页网页应用
 - 后端：Python HTTP 服务
 - AI：Ark Responses API
-- 数据：本地 JSON 记录
+- 数据：Supabase，失败时 fallback 到本地 JSON
 - 流程：创建 Agent → 输入需求 → 自动匹配与沟通 → 查看结果与合作大纲
-

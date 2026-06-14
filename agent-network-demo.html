@@ -789,7 +789,7 @@
         <button class="candidate" data-id="${escapeHtml(candidate.id)}">
           <div class="avatar">${escapeHtml(candidate.avatar)}</div>
           <div>
-            <h3>${escapeHtml(candidate.agent)} · ${escapeHtml(candidate.name)}</h3>
+            <h3>${escapeHtml(candidate.name)}</h3>
             <p>${escapeHtml(candidate.reasons.join("；"))}。${escapeHtml(candidate.availability)}</p>
             <div class="breakdown">
               <span>技能 ${candidate.breakdown.skill}</span>
@@ -825,7 +825,8 @@
       }
       state.selected = candidate;
       const cached = state.negotiations[candidate.id];
-      $("#conversationHeading").textContent = `Qin-01 ↔ ${candidate.agent}`;
+      const userName = state.profile?.name || "我";
+      $("#conversationHeading").textContent = `${userName} ↔ ${candidate.name}`;
       $("#conversationSub").textContent = cached?.outcome === "agreement"
         ? `${candidate.name} 的 Agent 已确认合作意向，等待你确认合作大纲。`
         : `${candidate.name} 的 Agent 已完成沟通，结论是不合适。`;
@@ -860,10 +861,16 @@
     function renderMessages(messages) {
       $("#messageList").innerHTML = messages.map(message => `
         <article class="message">
-          <div class="speaker">${escapeHtml(message.speaker)}</div>
+          <div class="speaker">${escapeHtml(displaySpeaker(message.speaker))}</div>
           <p>${escapeHtml(message.text)}</p>
         </article>
       `).join("");
+    }
+
+    function displaySpeaker(speaker) {
+      if (speaker === "Qin-01") return state.profile?.name || "我";
+      if (state.selected && speaker === state.selected.agent) return state.selected.name;
+      return speaker;
     }
 
     function renderBrief(intro) {
