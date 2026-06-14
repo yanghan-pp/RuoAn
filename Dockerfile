@@ -4,6 +4,7 @@ WORKDIR /app
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
-EXPOSE 4190
+ENV PORT=8080
+EXPOSE 8080
 
 CMD ["python", "api/lianlian_core.py"]
