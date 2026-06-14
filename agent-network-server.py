@@ -108,15 +108,22 @@ def supabase_select(table, query="select=*"):
 
 
 def append_local_json(path, collection, row):
-    if path.exists():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+    try:
+        if path.exists():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                data = {collection: []}
+        else:
             data = {collection: []}
-    else:
-        data = {collection: []}
+    except OSError as exc:
+        sys.stderr.write(f"Local fallback read skipped: {exc}\n")
+        return
     data.setdefault(collection, []).append(row)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(f"Local fallback write skipped: {exc}\n")
 
 
 def save_created_agent(profile, agent):

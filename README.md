@@ -35,7 +35,17 @@ outputs/
   agent-network-server.py      # Python 后端服务
   local-agent-db.json          # 本地 Agent 创建记录
   local-runtime-db.json        # 本地匹配和沟通记录 fallback
+api/
+  profile.py                   # Vercel API: 创建 Agent
+  match.py                     # Vercel API: 匹配并自动沟通
+  negotiate.py                 # Vercel API: 单候选沟通兜底
+  intro.py                     # Vercel API: 合作大纲
+  agents.py                    # Vercel API: 候选池
+  health.py                    # Vercel API: 健康检查
+public/
+  agent-network-demo.html      # Vercel 静态前端入口
 supabase_schema.sql            # Supabase 建表 SQL
+vercel.json                    # Vercel 根路径跳转配置
 ```
 
 ## 本地运行
@@ -94,6 +104,49 @@ python3 outputs/agent-network-server.py 4190
 - 合作大纲：`collaboration_briefs`
 
 如果没有配置 Supabase，或者写入失败，系统会自动写入本地 JSON fallback。
+
+## Vercel 部署
+
+项目已经包含 Vercel 友好的结构：
+
+```text
+api/       # Python serverless functions
+public/    # 静态前端页面
+vercel.json
+```
+
+部署步骤：
+
+1. 把这些文件上传到 GitHub：
+
+```text
+README.md
+.gitignore
+supabase_schema.sql
+vercel.json
+api/
+public/
+outputs/agent-network-server.py
+outputs/agent-network-demo.html
+```
+
+2. 在 Vercel 导入这个 GitHub 仓库。
+
+3. 在 Vercel Project Settings -> Environment Variables 中配置：
+
+```text
+SUPABASE_REST_URL
+SUPABASE_SERVICE_ROLE_KEY
+ARK_API_KEY
+```
+
+4. 部署完成后访问：
+
+```text
+https://your-vercel-domain.vercel.app/agent-network-demo.html
+```
+
+根路径 `/` 也会跳转到这个页面。
 
 ## 后端接口
 
