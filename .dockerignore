@@ -1,0 +1,7 @@
+.env
+.git
+.DS_Store
+__pycache__/
+api/__pycache__/
+outputs/local-agent-db.json
+outputs/local-runtime-db.json
