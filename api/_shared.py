@@ -6,16 +6,25 @@ import json
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_PATH = ROOT / "outputs" / "agent-network-server.py"
+_core = None
 
 
 def load_core():
+    if not CORE_PATH.exists():
+        raise FileNotFoundError(f"Backend core file is missing: {CORE_PATH}")
     spec = importlib.util.spec_from_file_location("lianlian_core", CORE_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load backend core from: {CORE_PATH}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-core = load_core()
+def get_core():
+    global _core
+    if _core is None:
+        _core = load_core()
+    return _core
 
 
 class JsonHandler(BaseHTTPRequestHandler):
